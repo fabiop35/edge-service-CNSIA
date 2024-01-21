@@ -4,6 +4,10 @@ Spring Cloud API Gateway: Circuit Breaker, Spring Session, Filters, Retry filter
 #create the project
 curl https://start.spring.io/starter.zip -d groupId=com.cnsia -d artifactId=edge-service-CNSIA -d name=edge-service-CNSIA -d packageName=com.cnsia.edgeservice -d groupId=cnsia -d dependencies=cloud-gateway,devtools,actuator -d javaVersion=17 -d bootVersion=3.2.0 -d type=gradle-project -o edge-service-CNSIA.zip
 
+#* startup dependencies *#
+redis-server
+keycloak
+nginx (frontend)
 
 https://github.com/ThomasVitale/cloud-native-spring-in-action/tree/sb-3-main
 
@@ -27,6 +31,8 @@ ab -n 21 -c 1 -m GET http://localhost:9000/books
  X-RateLimit-Requested-Tokens: 1
 
 ToDo: gradlew test --tests EdgeServiceApplicationTests
+gradle test --tests UserControllerTests
+gradle test --tests SecurityConfigTests
 
 #Test Catalog service
 curl http://localhost:9000/books
@@ -57,3 +63,28 @@ KEYCLOAK_ADMIN=user KEYCLOAK_ADMIN_PASSWORD=password ./bin/kc.sh start-dev
 
 #Register Edge Service as an OAuth2 Client in the PolarBookshop realm
 ./kcadm.sh create clients -r PolarBookshop -s clientId=edge-service -s enabled=true -s publicClient=false -s secret=polar-keycloak-secret -s 'redirectUris=["http://localhost:9000", "http://localhost:9000/login/oauth2/code/*"]' 
+
+#Assign password to users
+./kcadm.sh set-password -r PolarBookshop --username isabelle --new-password password
+
+./kcadm.sh set-password -r PolarBookshop --username bjorn --new-password password
+
+# Download image polar-ui
+docker image pull ghcr.io/polarbookshop/polar-ui:v1
+
+# NGINX
+pkg install nginx
+nginx
+nginx -s stop
+#copy ui files to nginx Termux
+cp * /data/data/com.termux/files/usr/share/nginx/html
+# start docker container polar UI
+docker run --name polar-ui -d -p 9004:9004 -e PORT=9004 ghcr.io/polarbookshop/polar-ui:v1
+
+# start an interactive session 
+docker exec -it polar-ui sh
+
+# cp files from the running container
+docker cp polar-ui:/workspace/workspace.tar /tmp
+
+
